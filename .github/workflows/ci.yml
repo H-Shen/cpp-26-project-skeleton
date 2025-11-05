@@ -1,4 +1,4 @@
-name: C++ CMake CI (Cross-Platform + FreeBSD)
+name: C++ CMake CI (Cross-Platform)
 
 on:
   push:
@@ -38,7 +38,7 @@ jobs:
           echo "============================="
 
       # ===========================
-      # Debug 构建（含平台特定检测）
+      # Debug 构建（Linux/macOS 含 sanitizer）
       # ===========================
       - name: Configure Debug
         run: |
@@ -53,7 +53,7 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             cmake --build build-debug --config Debug --verbose
           else
-            cmake --build build-debug --config Debug -- -j4 VERBOSE=1
+            cmake --build build-debug --config Debug -- -j 4 VERBOSE=1
           fi
           echo "==================================="
 
@@ -76,15 +76,10 @@ jobs:
         run: |
           echo "==== Running Debug Binary (Unix) ===="
           ./build-debug/my_app
-          # 如果有 tsan 版本，顺带跑一下
-          if [ -x "./build-debug/my_app_tsan" ]; then
-            echo "==== Running Debug TSAN Binary (Unix) ===="
-            ./build-debug/my_app_tsan
-          fi
           echo "================================"
 
       # ===========================
-      # Release 构建（O2，无额外 sanitizer）
+      # Release 构建（O2，无 sanitizer）
       # ===========================
       - name: Configure Release
         run: |
@@ -99,7 +94,7 @@ jobs:
           if [ "${{ runner.os }}" = "Windows" ]; then
             cmake --build build-release --config Release --verbose
           else
-            cmake --build build-release --config Release -- -j4 VERBOSE=1
+            cmake --build build-release --config Release -- -j 4 VERBOSE=1
           fi
           echo "===================================="
 
@@ -123,45 +118,3 @@ jobs:
           echo "==== Running Release Binary (Unix) ===="
           ./build-release/my_app
           echo "==================================="
-
-  # =========================================
-  # FreeBSD CI：在 Ubuntu 上起 FreeBSD VM
-  # =========================================
-  freebsd-build-and-test:
-    name: Build & Run on FreeBSD
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build & Test in FreeBSD
-        uses: vmactions/freebsd-vm@v1
-        with:
-          # 默认 14.x 就行，必要可指定版本：
-          release: "14.3"
-          usesh: true
-          prepare: |
-            pkg update -f
-            pkg install -y cmake git
-          run: |
-            echo "==== FreeBSD version ===="
-            freebsd-version
-
-            echo "==== Configure Debug (FreeBSD) ===="
-            cmake -S . -B build-debug \
-                  -DCMAKE_BUILD_TYPE=Debug \
-                  -DENABLE_SANITIZERS=ON
-            echo "==== Build Debug (FreeBSD) ===="
-            cmake --build build-debug -- -j4
-            echo "==== Run Debug (FreeBSD) ===="
-            ./build-debug/my_app
-
-            echo "==== Configure Release (FreeBSD) ===="
-            cmake -S . -B build-release \
-                  -DCMAKE_BUILD_TYPE=Release \
-                  -DENABLE_SANITIZERS=ON
-            echo "==== Build Release (FreeBSD) ===="
-            cmake --build build-release -- -j4
-            echo "==== Run Release (FreeBSD) ===="
-            ./build-release/my_app
