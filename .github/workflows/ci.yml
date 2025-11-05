@@ -14,11 +14,16 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
+    # 所有 run 步骤一律用 bash（包括 Windows）
+    defaults:
+      run:
+        shell: bash
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Debug 构建（含 sanitizer）
+      # ---------- Debug 构建（带 sanitizer） ----------
       - name: Configure Debug (with sanitizers)
         run: |
           cmake -S . -B build-debug \
@@ -31,14 +36,18 @@ jobs:
       - name: Run Debug binary
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            ./build-debug/Debug/my_app.exe
+            # 兼容 VS（多配置）和 Ninja/Make（单配置）
+            if [ -f "./build-debug/Debug/my_app.exe" ]; then
+              ./build-debug/Debug/my_app.exe
+            else
+              ./build-debug/my_app.exe
+            fi
           else
             ./build-debug/my_app
           fi
-        shell: bash
 
-      # Release 构建（无 sanitizer）
-      - name: Configure Release (no sanitizers)
+      # ---------- Release 构建（无 sanitizer） ----------
+      - name: Configure Release (no sanitizers in CMakeLists for Release)
         run: |
           cmake -S . -B build-release \
                 -DCMAKE_BUILD_TYPE=Release \
@@ -50,8 +59,11 @@ jobs:
       - name: Run Release binary
         run: |
           if [ "${{ runner.os }}" = "Windows" ]; then
-            ./build-release/Release/my_app.exe
+            if [ -f "./build-release/Release/my_app.exe" ]; then
+              ./build-release/Release/my_app.exe
+            else
+              ./build-release/my_app.exe
+            fi
           else
             ./build-release/my_app
           fi
-        shell: bash
