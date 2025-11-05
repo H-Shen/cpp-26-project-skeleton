@@ -1,4 +1,4 @@
-name: C++ CMake CI
+name: C++ CMake CI (Cross-Platform Verbose)
 
 on:
   push:
@@ -14,7 +14,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
-    # 所有 run 步骤一律用 bash（包括 Windows）
     defaults:
       run:
         shell: bash
@@ -23,20 +22,48 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ---------- Debug 构建（带 sanitizer） ----------
-      - name: Configure Debug (with sanitizers)
+      - name: Print environment info
+        run: |
+          echo "==== System Information ===="
+          echo "OS: ${{ runner.os }}"
+          cmake --version
+          echo
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            echo "MSVC cl.exe version:"
+            "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC"/*/bin/Hostx64/x64/cl.exe 2>&1 || true
+          else
+            echo "Compiler version:"
+            c++ --version
+          fi
+          echo "============================="
+
+      # ==============================================================
+      # Debug 构建（含 sanitizer，verbose 打印所有命令）
+      # ==============================================================
+
+      - name: Configure Debug (with sanitizers, verbose)
         run: |
           cmake -S . -B build-debug \
                 -DCMAKE_BUILD_TYPE=Debug \
-                -DENABLE_SANITIZERS=ON
+                -DENABLE_SANITIZERS=ON \
+                -DCMAKE_VERBOSE_MAKEFILE=ON
 
-      - name: Build Debug
-        run: cmake --build build-debug --config Debug -- -j 4
+      - name: Build Debug (verbose)
+        run: |
+          echo "==== Building Debug (Verbose) ===="
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            # Windows: MSBuild 自带并行，不能加 -j 参数
+            cmake --build build-debug --config Debug --verbose
+          else
+            # Linux/macOS: Make/Ninja 支持并行 + verbose
+            cmake --build build-debug --config Debug -- -j 4 VERBOSE=1
+          fi
+          echo "==================================="
 
       - name: Run Debug binary
         run: |
+          echo "==== Running Debug Binary ===="
           if [ "${{ runner.os }}" = "Windows" ]; then
-            # 兼容 VS（多配置）和 Ninja/Make（单配置）
             if [ -f "./build-debug/Debug/my_app.exe" ]; then
               ./build-debug/Debug/my_app.exe
             else
@@ -45,19 +72,32 @@ jobs:
           else
             ./build-debug/my_app
           fi
+          echo "================================"
 
-      # ---------- Release 构建（无 sanitizer） ----------
-      - name: Configure Release (no sanitizers in CMakeLists for Release)
+      # ==============================================================
+      # Release 构建（优化 O2，无 sanitizer，verbose 打印所有命令）
+      # ==============================================================
+
+      - name: Configure Release (verbose)
         run: |
           cmake -S . -B build-release \
                 -DCMAKE_BUILD_TYPE=Release \
-                -DENABLE_SANITIZERS=ON
+                -DENABLE_SANITIZERS=ON \
+                -DCMAKE_VERBOSE_MAKEFILE=ON
 
-      - name: Build Release
-        run: cmake --build build-release --config Release -- -j 4
+      - name: Build Release (verbose)
+        run: |
+          echo "==== Building Release (Verbose) ===="
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cmake --build build-release --config Release --verbose
+          else
+            cmake --build build-release --config Release -- -j 4 VERBOSE=1
+          fi
+          echo "===================================="
 
       - name: Run Release binary
         run: |
+          echo "==== Running Release Binary ===="
           if [ "${{ runner.os }}" = "Windows" ]; then
             if [ -f "./build-release/Release/my_app.exe" ]; then
               ./build-release/Release/my_app.exe
@@ -67,3 +107,4 @@ jobs:
           else
             ./build-release/my_app
           fi
+          echo "================================="
