@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.20)
 
 project(MyProject LANGUAGES CXX)
 
-# -------------------------
+# ------------------------------------------------------------
 # 平台 / 编译器组合检查
-# 只允许：
+# 允许：
 #   - Windows + MSVC
 #   - macOS  + Clang/AppleClang
 #   - Linux  + GCC
-# -------------------------
+# ------------------------------------------------------------
 if(WIN32)
     if(NOT MSVC)
         message(FATAL_ERROR "On Windows, only MSVC toolchain is supported.")
@@ -33,9 +33,9 @@ else()
     message(FATAL_ERROR "Unsupported platform.")
 endif()
 
-# -------------------------
+# ------------------------------------------------------------
 # C++ 标准：C++23，无扩展
-# -------------------------
+# ------------------------------------------------------------
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -45,17 +45,14 @@ if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
 endif()
 
-# =========================================================
-# 按平台设置：警告、优化等级、Debug 检查机制
-# =========================================================
+# ============================================================
+# 全局告警 & 优化等级 & 基础 Debug 设置
+# ============================================================
 
 if(PLATFORM_TOOLCHAIN STREQUAL "WIN_MSVC")
     message(STATUS "Configuring for Windows + MSVC")
 
-    # 所有配置的通用选项：
-    # /W4       高等级警告
-    # /utf-8    源文件 UTF-8
-    # /bigobj   大量模板代码时避免 section 数过多
+    # 通用：高等级告警 + UTF-8 + bigobj
     add_compile_options(
         /W4
         /utf-8
@@ -67,18 +64,16 @@ if(PLATFORM_TOOLCHAIN STREQUAL "WIN_MSVC")
         "MultiThreaded$<$<CONFIG:Debug>:Debug>"
     )
 
-    # Debug 专用：关闭优化 + 调试信息 + 各种运行时/安全/静态检查
-    # /Od      无优化
-    # /Zi      PDB 调试信息
-    # /RTC1    运行时检查（栈帧、未初始化、溢出等）
-    # /sdl     额外安全检查（缓冲区/栈之类）
-    # /analyze 静态分析（可能报出内存泄漏、资源泄露、危险路径等）
+    # Debug：无优化 + 调试信息 + MSVC 提供的各类安全/诊断开关
+    # /RTC1    运行时检查（未初始化变量/栈帧/溢出等）
+    # /sdl     安全检查（SDL）
+    # /analyze 静态分析（潜在泄漏/危险路径等）
     # /permissive- 更严格的标准 C++
     add_compile_options(
         "$<$<CONFIG:Debug>:/Od;/Zi;/RTC1;/sdl;/analyze;/permissive->"
     )
 
-    # Release：O2 + NDEBUG（安全检查交给 Sanitizer 的 Linux/macOS）
+    # Release：O2 + NDEBUG
     add_compile_options(
         "$<$<CONFIG:Release>:/O2;/DNDEBUG>"
     )
@@ -87,7 +82,7 @@ elseif(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM"
        OR PLATFORM_TOOLCHAIN STREQUAL "LINUX_GCC")
     message(STATUS "Configuring for Unix-like + ${CMAKE_CXX_COMPILER_ID}")
 
-    # 所有配置的通用高强度警告
+    # 通用高强度告警
     add_compile_options(
         -Wall
         -Wextra
@@ -118,11 +113,10 @@ elseif(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM"
     )
 endif()
 
-# =========================================================
+# ============================================================
 # Sanitizer（仅 Linux/macOS Debug）
-# Windows 走 MSVC 自己的 /RTC1 /sdl /analyze 等
-# =========================================================
-
+# Windows 依赖 MSVC 自己的 /RTC1 /sdl /analyze 等
+# ============================================================
 option(ENABLE_SANITIZERS "Enable sanitizers in Debug builds (non-Windows only)" ON)
 
 set(PROJECT_SANITIZER_COMPILE_FLAGS "")
@@ -130,7 +124,7 @@ set(PROJECT_SANITIZER_LINK_FLAGS "")
 
 if(ENABLE_SANITIZERS)
     if(PLATFORM_TOOLCHAIN STREQUAL "WIN_MSVC")
-        message(STATUS "Sanitizers are not configured for MSVC; using /RTC1, /sdl, /analyze instead.")
+        message(STATUS "Sanitizers not configured for MSVC; using /RTC1, /sdl, /analyze instead.")
     elseif(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM")
         # macOS: ASan + UBSan
         set(PROJECT_SANITIZER_COMPILE_FLAGS
@@ -150,21 +144,21 @@ if(ENABLE_SANITIZERS)
     endif()
 endif()
 
-# =========================================================
+# ============================================================
 # 多线程库
-# =========================================================
+# ============================================================
 find_package(Threads REQUIRED)
 
-# =========================================================
+# ============================================================
 # 源文件列表
-# =========================================================
+# ============================================================
 set(SRC_FILES
     src/main.cpp
 )
 
-# =========================================================
+# ============================================================
 # 主可执行文件：my_app
-# =========================================================
+# ============================================================
 add_executable(my_app
     ${SRC_FILES}
 )
@@ -182,11 +176,44 @@ if(PROJECT_SANITIZER_LINK_FLAGS)
     target_link_options(my_app PRIVATE ${PROJECT_SANITIZER_LINK_FLAGS})
 endif()
 
-# =========================================================
+# ============================================================
+# 平台专属的 Debug 加强项（STL / 栈保护 等）
+# ============================================================
+
+# Windows: STL 迭代器 Debug & 更严格语义
+if(PLATFORM_TOOLCHAIN STREQUAL "WIN_MSVC")
+    target_compile_definitions(my_app PRIVATE
+        $<$<CONFIG:Debug>:_ITERATOR_DEBUG_LEVEL=2>
+    )
+    target_compile_options(my_app PRIVATE
+        $<$<CONFIG:Debug>:/Zc:preprocessor;/Zc:strictStrings;/Zc:throwingNew;/Zc:inline>
+    )
+endif()
+
+# Linux: libstdc++ Debug 模式 + 栈保护 + frame pointer
+if(PLATFORM_TOOLCHAIN STREQUAL "LINUX_GCC")
+    target_compile_definitions(my_app PRIVATE
+        $<$<CONFIG:Debug>:_GLIBCXX_DEBUG;_GLIBCXX_DEBUG_PEDANTIC;_GLIBCXX_ASSERTIONS>
+    )
+    target_compile_options(my_app PRIVATE
+        $<$<CONFIG:Debug>:-fstack-protector-strong;-fno-omit-frame-pointer>
+    )
+endif()
+
+# macOS: libc++ Debug 模式 + 栈保护 + frame pointer
+if(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM")
+    target_compile_definitions(my_app PRIVATE
+        $<$<CONFIG:Debug>:_LIBCPP_ENABLE_ASSERTIONS=1;_LIBCPP_DEBUG=1>
+    )
+    target_compile_options(my_app PRIVATE
+        $<$<CONFIG:Debug>:-fstack-protector-strong;-fno-omit-frame-pointer>
+    )
+endif()
+
+# ============================================================
 # 线程 Sanitizer 版本：my_app_tsan
 # 仅在 Linux/macOS 且 ENABLE_SANITIZERS 开启时生成
-# 用来专门查 race condition
-# =========================================================
+# ============================================================
 if(ENABLE_SANITIZERS
    AND (PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM"
         OR PLATFORM_TOOLCHAIN STREQUAL "LINUX_GCC"))
@@ -206,12 +233,29 @@ if(ENABLE_SANITIZERS
     target_link_options(my_app_tsan PRIVATE
         "$<$<CONFIG:Debug>:-fsanitize=thread>"
     )
+
+    # my_app_tsan 同样享受 STL Debug + 栈保护
+
+    if(PLATFORM_TOOLCHAIN STREQUAL "LINUX_GCC")
+        target_compile_definitions(my_app_tsan PRIVATE
+            $<$<CONFIG:Debug>:_GLIBCXX_DEBUG;_GLIBCXX_DEBUG_PEDANTIC;_GLIBCXX_ASSERTIONS>
+        )
+        target_compile_options(my_app_tsan PRIVATE
+            $<$<CONFIG:Debug>:-fstack-protector-strong;-fno-omit-frame-pointer>
+        )
+    elseif(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM")
+        target_compile_definitions(my_app_tsan PRIVATE
+            $<$<CONFIG:Debug>:_LIBCPP_ENABLE_ASSERTIONS=1;_LIBCPP_DEBUG=1>
+        )
+        target_compile_options(my_app_tsan PRIVATE
+            $<$<CONFIG:Debug>:-fstack-protector-strong;-fno-omit-frame-pointer>
+        )
+    endif()
 endif()
 
-# =========================================================
+# ============================================================
 # 只对 main 源文件启用 Werror(/WX)
-# 其它文件：高强度告警但不强制成错误
-# =========================================================
+# ============================================================
 set(MAIN_SOURCE "src/main.cpp")
 
 if(PLATFORM_TOOLCHAIN STREQUAL "WIN_MSVC")
