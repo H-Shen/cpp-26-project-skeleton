@@ -1,4 +1,4 @@
-name: C++ CMake CI (Cross-Platform Verbose)
+name: C++ CMake CI (Cross-Platform + FreeBSD)
 
 on:
   push:
@@ -14,7 +14,6 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
-    # 默认用 bash（Linux/macOS + 大部分步骤）
     defaults:
       run:
         shell: bash
@@ -31,7 +30,7 @@ jobs:
           echo
           if [ "${{ runner.os }}" = "Windows" ]; then
             echo "MSVC cl.exe version:"
-            "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC"/*/bin/Hostx64/x64/cl.exe 2>&1 || true
+            cl 2>&1 || true
           else
             echo "Compiler version:"
             c++ --version
@@ -39,29 +38,25 @@ jobs:
           echo "============================="
 
       # ===========================
-      # Debug 构建（含 sanitizer）
+      # Debug 构建（含平台特定检测）
       # ===========================
-
-      - name: Configure Debug (with sanitizers, verbose)
+      - name: Configure Debug
         run: |
           cmake -S . -B build-debug \
                 -DCMAKE_BUILD_TYPE=Debug \
                 -DENABLE_SANITIZERS=ON \
                 -DCMAKE_VERBOSE_MAKEFILE=ON
 
-      - name: Build Debug (verbose)
+      - name: Build Debug
         run: |
           echo "==== Building Debug (Verbose) ===="
           if [ "${{ runner.os }}" = "Windows" ]; then
-            # Windows: MSBuild (cl.exe)，不能加 -j
             cmake --build build-debug --config Debug --verbose
           else
-            # Linux/macOS: Make/Ninja 支持并行 + VERBOSE
-            cmake --build build-debug --config Debug -- -j 4 VERBOSE=1
+            cmake --build build-debug --config Debug -- -j4 VERBOSE=1
           fi
           echo "==================================="
 
-      # 运行 Debug：Windows 单独用 PowerShell 跑 exe
       - name: Run Debug binary (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -81,26 +76,30 @@ jobs:
         run: |
           echo "==== Running Debug Binary (Unix) ===="
           ./build-debug/my_app
+          # 如果有 tsan 版本，顺带跑一下
+          if [ -x "./build-debug/my_app_tsan" ]; then
+            echo "==== Running Debug TSAN Binary (Unix) ===="
+            ./build-debug/my_app_tsan
+          fi
           echo "================================"
 
       # ===========================
-      # Release 构建（O2，无 sanitizer）
+      # Release 构建（O2，无额外 sanitizer）
       # ===========================
-
-      - name: Configure Release (verbose)
+      - name: Configure Release
         run: |
           cmake -S . -B build-release \
                 -DCMAKE_BUILD_TYPE=Release \
                 -DENABLE_SANITIZERS=ON \
                 -DCMAKE_VERBOSE_MAKEFILE=ON
 
-      - name: Build Release (verbose)
+      - name: Build Release
         run: |
           echo "==== Building Release (Verbose) ===="
           if [ "${{ runner.os }}" = "Windows" ]; then
             cmake --build build-release --config Release --verbose
           else
-            cmake --build build-release --config Release -- -j 4 VERBOSE=1
+            cmake --build build-release --config Release -- -j4 VERBOSE=1
           fi
           echo "===================================="
 
@@ -124,3 +123,45 @@ jobs:
           echo "==== Running Release Binary (Unix) ===="
           ./build-release/my_app
           echo "==================================="
+
+  # =========================================
+  # FreeBSD CI：在 Ubuntu 上起 FreeBSD VM
+  # =========================================
+  freebsd-build-and-test:
+    name: Build & Run on FreeBSD
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build & Test in FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        with:
+          # 默认 14.x 就行，必要可指定版本：
+          release: "14.3"
+          usesh: true
+          prepare: |
+            pkg update -f
+            pkg install -y cmake git
+          run: |
+            echo "==== FreeBSD version ===="
+            freebsd-version
+
+            echo "==== Configure Debug (FreeBSD) ===="
+            cmake -S . -B build-debug \
+                  -DCMAKE_BUILD_TYPE=Debug \
+                  -DENABLE_SANITIZERS=ON
+            echo "==== Build Debug (FreeBSD) ===="
+            cmake --build build-debug -- -j4
+            echo "==== Run Debug (FreeBSD) ===="
+            ./build-debug/my_app
+
+            echo "==== Configure Release (FreeBSD) ===="
+            cmake -S . -B build-release \
+                  -DCMAKE_BUILD_TYPE=Release \
+                  -DENABLE_SANITIZERS=ON
+            echo "==== Build Release (FreeBSD) ===="
+            cmake --build build-release -- -j4
+            echo "==== Run Release (FreeBSD) ===="
+            ./build-release/my_app
