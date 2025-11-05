@@ -5,8 +5,7 @@
 int main() {
     std::cout << "Hello from main thread\n";
 
-    // Use std::jthread (C++20+) — auto joins on destruction
-    std::vector<std::jthread> workers;
+    std::vector<std::thread> workers;
     workers.reserve(2);
 
     for (int i = 0; i < 2; ++i) {
@@ -15,6 +14,8 @@ int main() {
         });
     }
 
-    // No need to call join() — handled automatically
+    for (auto &t : workers) {
+        t.join();
+    }
     return 0;
 }
