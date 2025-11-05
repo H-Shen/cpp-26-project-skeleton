@@ -200,10 +200,13 @@ if(PLATFORM_TOOLCHAIN STREQUAL "LINUX_GCC")
     )
 endif()
 
-# macOS: libc++ Debug 模式 + 栈保护 + frame pointer
+# macOS: libc++ hardening debug 模式 + 可选 iterator debug + 栈保护 + frame pointer
 if(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM")
     target_compile_definitions(my_app PRIVATE
-        $<$<CONFIG:Debug>:_LIBCPP_ENABLE_ASSERTIONS=1;_LIBCPP_DEBUG=1>
+        $<$<CONFIG:Debug>:
+            _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG;
+            _LIBCPP_DEBUG=1
+        >
     )
     target_compile_options(my_app PRIVATE
         $<$<CONFIG:Debug>:-fstack-protector-strong;-fno-omit-frame-pointer>
@@ -234,7 +237,7 @@ if(ENABLE_SANITIZERS
         "$<$<CONFIG:Debug>:-fsanitize=thread>"
     )
 
-    # my_app_tsan 同样享受 STL Debug + 栈保护
+    # my_app_tsan 同样享受 STL / hardening / 栈保护
 
     if(PLATFORM_TOOLCHAIN STREQUAL "LINUX_GCC")
         target_compile_definitions(my_app_tsan PRIVATE
@@ -245,7 +248,10 @@ if(ENABLE_SANITIZERS
         )
     elseif(PLATFORM_TOOLCHAIN STREQUAL "MAC_LLVM")
         target_compile_definitions(my_app_tsan PRIVATE
-            $<$<CONFIG:Debug>:_LIBCPP_ENABLE_ASSERTIONS=1;_LIBCPP_DEBUG=1>
+            $<$<CONFIG:Debug>:
+                _LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_DEBUG;
+                _LIBCPP_DEBUG=1
+            >
         )
         target_compile_options(my_app_tsan PRIVATE
             $<$<CONFIG:Debug>:-fstack-protector-strong;-fno-omit-frame-pointer>
