@@ -14,6 +14,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
+    # 默认用 bash（Linux/macOS + 大部分步骤）
     defaults:
       run:
         shell: bash
@@ -37,9 +38,9 @@ jobs:
           fi
           echo "============================="
 
-      # ==============================================================
-      # Debug 构建（含 sanitizer，verbose 打印所有命令）
-      # ==============================================================
+      # ===========================
+      # Debug 构建（含 sanitizer）
+      # ===========================
 
       - name: Configure Debug (with sanitizers, verbose)
         run: |
@@ -52,31 +53,39 @@ jobs:
         run: |
           echo "==== Building Debug (Verbose) ===="
           if [ "${{ runner.os }}" = "Windows" ]; then
-            # Windows: MSBuild 自带并行，不能加 -j 参数
+            # Windows: MSBuild (cl.exe)，不能加 -j
             cmake --build build-debug --config Debug --verbose
           else
-            # Linux/macOS: Make/Ninja 支持并行 + verbose
+            # Linux/macOS: Make/Ninja 支持并行 + VERBOSE
             cmake --build build-debug --config Debug -- -j 4 VERBOSE=1
           fi
           echo "==================================="
 
-      - name: Run Debug binary
+      # 运行 Debug：Windows 单独用 PowerShell 跑 exe
+      - name: Run Debug binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          echo "==== Running Debug Binary ===="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            if [ -f "./build-debug/Debug/my_app.exe" ]; then
-              ./build-debug/Debug/my_app.exe
-            else
-              ./build-debug/my_app.exe
-            fi
-          else
-            ./build-debug/my_app
-          fi
+          Write-Host "==== Running Debug Binary (Windows) ===="
+          if (Test-Path "build-debug/Debug/my_app.exe") {
+            & "build-debug/Debug/my_app.exe"
+          } elseif (Test-Path "build-debug/my_app.exe") {
+            & "build-debug/my_app.exe"
+          } else {
+            Write-Error "my_app.exe not found in build-debug"
+          }
+          Write-Host "================================"
+
+      - name: Run Debug binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          echo "==== Running Debug Binary (Unix) ===="
+          ./build-debug/my_app
           echo "================================"
 
-      # ==============================================================
-      # Release 构建（优化 O2，无 sanitizer，verbose 打印所有命令）
-      # ==============================================================
+      # ===========================
+      # Release 构建（O2，无 sanitizer）
+      # ===========================
 
       - name: Configure Release (verbose)
         run: |
@@ -95,16 +104,23 @@ jobs:
           fi
           echo "===================================="
 
-      - name: Run Release binary
+      - name: Run Release binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          echo "==== Running Release Binary ===="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            if [ -f "./build-release/Release/my_app.exe" ]; then
-              ./build-release/Release/my_app.exe
-            else
-              ./build-release/my_app.exe
-            fi
-          else
-            ./build-release/my_app
-          fi
-          echo "================================="
+          Write-Host "==== Running Release Binary (Windows) ===="
+          if (Test-Path "build-release/Release/my_app.exe") {
+            & "build-release/Release/my_app.exe"
+          } elseif (Test-Path "build-release/my_app.exe") {
+            & "build-release/my_app.exe"
+          } else {
+            Write-Error "my_app.exe not found in build-release"
+          }
+          Write-Host "=================================="
+
+      - name: Run Release binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          echo "==== Running Release Binary (Unix) ===="
+          ./build-release/my_app
+          echo "==================================="
