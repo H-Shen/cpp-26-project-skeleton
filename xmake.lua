@@ -1,6 +1,7 @@
 set_project("Cpp23ProjectDemo")
 set_version("0.1.0")
 set_xmakever("2.8.5")
+set_allowedplats("windows", "macosx", "linux")
 
 add_rules("mode.debug", "mode.release")
 
@@ -10,8 +11,6 @@ elseif is_plat("macosx") then
     set_toolchains("clang")
 elseif is_plat("linux") then
     set_toolchains("gcc")
-else
-    assert(false, "Unsupported platform: only Windows, macOS, and Linux are supported")
 end
 
 local function configure_common_target()
