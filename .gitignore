@@ -1,41 +1,33 @@
-# Prerequisites
-*.d
+# Xmake
+.xmake/
+build/
+build-*/
 
-# Compiled Object files
-*.slo
-*.lo
+# Compiled objects and libraries
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Linker files
-*.ilk
-
-# Debugger Files
-*.pdb
-
-# Compiled Dynamic libraries
+*.a
+*.lib
 *.so
 *.dylib
 *.dll
 
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
+# Executables and debug artifacts
 *.exe
 *.out
 *.app
-
-# debug information files
+*.pdb
+*.ilk
 *.dwo
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Dependency files
+*.d
+
+# IDE / OS
+.DS_Store
+.vscode/
+.idea/
