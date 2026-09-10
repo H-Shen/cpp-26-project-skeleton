@@ -1,120 +1,45 @@
-name: C++ CMake CI (Cross-Platform)
+name: C++ Xmake CI (Cross-Platform)
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
 
 jobs:
   build-and-test:
-    name: Build & Run on ${{ matrix.os }}
+    name: Build & Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Print environment info
-        run: |
-          echo "==== System Information ===="
-          echo "OS: ${{ runner.os }}"
-          cmake --version
-          echo
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            echo "MSVC cl.exe version:"
-            cl 2>&1 || true
-          else
-            echo "Compiler version:"
-            c++ --version
-          fi
-          echo "============================="
+      - name: Set up Xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
 
-      # ===========================
-      # Debug 构建（Linux/macOS 含 sanitizer）
-      # ===========================
+      - name: Print environment info
+        run: xmake --version
+
       - name: Configure Debug
-        run: |
-          cmake -S . -B build-debug \
-                -DCMAKE_BUILD_TYPE=Debug \
-                -DENABLE_SANITIZERS=ON \
-                -DCMAKE_VERBOSE_MAKEFILE=ON
+        run: xmake f -m debug -c
 
       - name: Build Debug
-        run: |
-          echo "==== Building Debug (Verbose) ===="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cmake --build build-debug --config Debug --verbose
-          else
-            cmake --build build-debug --config Debug -- -j 4 VERBOSE=1
-          fi
-          echo "==================================="
+        run: xmake -vD
 
-      - name: Run Debug binary (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Write-Host "==== Running Debug Binary (Windows) ===="
-          if (Test-Path "build-debug/Debug/my_app.exe") {
-            & "build-debug/Debug/my_app.exe"
-          } elseif (Test-Path "build-debug/my_app.exe") {
-            & "build-debug/my_app.exe"
-          } else {
-            Write-Error "my_app.exe not found in build-debug"
-          }
-          Write-Host "================================"
+      - name: Test Debug
+        run: xmake test -v
 
-      - name: Run Debug binary (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          echo "==== Running Debug Binary (Unix) ===="
-          ./build-debug/my_app
-          echo "================================"
-
-      # ===========================
-      # Release 构建（O2，无 sanitizer）
-      # ===========================
       - name: Configure Release
-        run: |
-          cmake -S . -B build-release \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DENABLE_SANITIZERS=ON \
-                -DCMAKE_VERBOSE_MAKEFILE=ON
+        run: xmake f -m release -c
 
       - name: Build Release
-        run: |
-          echo "==== Building Release (Verbose) ===="
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cmake --build build-release --config Release --verbose
-          else
-            cmake --build build-release --config Release -- -j 4 VERBOSE=1
-          fi
-          echo "===================================="
+        run: xmake -vD
 
-      - name: Run Release binary (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Write-Host "==== Running Release Binary (Windows) ===="
-          if (Test-Path "build-release/Release/my_app.exe") {
-            & "build-release/Release/my_app.exe"
-          } elseif (Test-Path "build-release/my_app.exe") {
-            & "build-release/my_app.exe"
-          } else {
-            Write-Error "my_app.exe not found in build-release"
-          }
-          Write-Host "=================================="
-
-      - name: Run Release binary (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          echo "==== Running Release Binary (Unix) ===="
-          ./build-release/my_app
-          echo "==================================="
+      - name: Test Release
+        run: xmake test -v
