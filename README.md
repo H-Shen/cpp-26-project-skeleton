@@ -1,4 +1,4 @@
-# Cpp23ProjectDemo
+# Cpp_23_Project_Skeleton
 
 Minimal cross-platform C++23 project template using Xmake.
 
