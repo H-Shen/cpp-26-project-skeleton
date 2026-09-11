@@ -4,7 +4,7 @@
 #endif
 
 #include <iostream>
-#include <syncstream>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -16,12 +16,14 @@ int main() {
 
     std::cout << "Hello from main thread\n";
 
+    std::mutex output_mutex;
     std::vector<std::thread> workers;
     workers.reserve(2);
 
     for (int i = 0; i < 2; ++i) {
-        workers.emplace_back([i] {
-            std::osyncstream(std::cout) << "Hello from worker " << i << '\n';
+        workers.emplace_back([i, &output_mutex] {
+            const std::scoped_lock lock(output_mutex);
+            std::cout << "Hello from worker " << i << '\n';
         });
     }
 
