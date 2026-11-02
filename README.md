@@ -17,7 +17,7 @@ The standard library is consumed through ordinary headers rather than `import st
 The reference configurations are intentionally narrow and are the same configurations exercised by CI:
 
 - Linux: GCC 16 on Ubuntu 26.04
-- macOS: LLVM Clang 21 on macOS 26
+- macOS: LLVM Clang 22 (22.1.8 or newer) on macOS 26
 - Windows: MSVC from Visual Studio 2026 on Windows Server 2025
 
 Other platform/toolchain combinations may work but are not part of the supported matrix.
@@ -42,6 +42,8 @@ xmake test
 ```
 
 On Linux and macOS, Debug builds enable ASan + UBSan. Linux also enables LeakSanitizer. `xmake test` additionally builds and runs a separate ThreadSanitizer target on Linux and macOS.
+
+Each test has a 30-second runtime limit.
 
 Debug builds also enable runtime/STL hardening where available:
 
@@ -71,13 +73,15 @@ xmake test
 
 Use `-m release` for the Release configuration. Selecting the toolchain also selects GCC 16 for linking.
 
-## macOS LLVM 21
+## macOS LLVM 22
 
 Use upstream LLVM for named modules. The tested Apple Clang 21 accepts C++26 mode but rejects the module declarations.
 
+LLVM 22.1.8 or newer is required to avoid an ASan startup deadlock on macOS 26.4 and newer ([upstream fix](https://github.com/llvm/llvm-project/pull/188913)).
+
 ```bash
-brew install llvm@21
-xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@21)"
+brew install llvm@22
+xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
 xmake
 xmake test
 ```
@@ -140,7 +144,7 @@ import cpp26_skeleton;
 GitHub Actions builds and tests Debug and Release configurations on the pinned reference environments:
 
 - Ubuntu 26.04 with GCC 16
-- macOS 26 with LLVM Clang 21
+- macOS 26 with LLVM Clang 22 (22.1.8 or newer)
 - Windows Server 2025 with Visual Studio 2026
 
 CI installs Xmake 3.1.2 explicitly. Warnings are treated as errors for project targets.

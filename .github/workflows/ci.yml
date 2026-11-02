@@ -9,6 +9,7 @@ jobs:
   build-and-test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -17,10 +18,10 @@ jobs:
             os: ubuntu-26.04
             configure_debug: xmake f -m debug -c --toolchain=gcc-16
             configure_release: xmake f -m release -c --toolchain=gcc-16
-          - name: macOS 26 / LLVM Clang 21
+          - name: macOS 26 / LLVM Clang 22
             os: macos-26
-            configure_debug: xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@21)"
-            configure_release: xmake f -m release -c --toolchain=llvm --sdk="$(brew --prefix llvm@21)"
+            configure_debug: xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
+            configure_release: xmake f -m release -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
           - name: Windows Server 2025 / Visual Studio 2026
             os: windows-2025-vs2026
             configure_debug: xmake f -m debug -c
@@ -41,9 +42,9 @@ jobs:
         with:
           xmake-version: 3.1.2
 
-      - name: Install LLVM 21
+      - name: Install LLVM 22
         if: runner.os == 'macOS'
-        run: brew install llvm@21
+        run: brew install llvm@22
 
       - name: Print environment info
         run: xmake --version

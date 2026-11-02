@@ -82,7 +82,7 @@ end
 
 target("cpp26_skeleton")
     configure_common_target()
-    add_tests("smoke")
+    add_tests("smoke", {run_timeout = 30000})
 
     if is_mode("debug") and is_plat("linux") then
         add_cxxflags("-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer")
@@ -98,5 +98,5 @@ if is_mode("debug") and is_plat("linux", "macosx") then
         set_default(false)
         add_cxxflags("-fsanitize=thread", "-fno-omit-frame-pointer")
         add_ldflags("-fsanitize=thread")
-        add_tests("tsan")
+        add_tests("tsan", {run_timeout = 30000})
 end
