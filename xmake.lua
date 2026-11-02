@@ -16,7 +16,6 @@ end
 local function configure_common_target()
     set_kind("binary")
     set_languages("cxx26")
-    set_policy("build.c++.modules", true)
     set_policy("build.c++.modules.std", true)
 
     add_files(
