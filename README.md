@@ -1,4 +1,4 @@
-# Cpp_26_Project_Skeleton
+# cpp-26-project-skeleton
 
 Minimal cross-platform C++26 project template using Xmake and C++ named modules.
 
@@ -141,10 +141,16 @@ import cpp26_skeleton;
 
 ## CI
 
-GitHub Actions builds and tests Debug and Release configurations on the pinned reference environments:
+Pushes to `main` or `master` and pull requests run Linux only, using Ubuntu 26.04 and GCC 16. Documentation-only changes do not trigger CI.
 
-- Ubuntu 26.04 with GCC 16
-- macOS 26 with LLVM Clang 22 (22.1.8 or newer)
-- Windows Server 2025 with Visual Studio 2026
+To check all three platforms, manually run **C++26 Modules Xmake CI** from the Actions tab with **full_matrix** enabled:
 
-CI installs Xmake 3.1.2 explicitly. Warnings are treated as errors for project targets.
+- Ubuntu 26.04 / GCC 16
+- macOS 26 / LLVM Clang 22 (22.1.8 or newer)
+- Windows Server 2025 / Visual Studio 2026
+
+A manual run defaults to Linux only. Enabling the full matrix consumes hosted compute on all three platforms.
+
+Every selected platform builds and tests Debug and Release, including the separate TSan test where supported. Xmake is pinned to 3.1.2, and project warnings remain errors.
+
+Each test process is limited to 30 seconds, each test step to one minute, and each job to eight minutes. A new run cancels an older run for the same branch or pull request. A failed matrix job cancels the remaining jobs.

@@ -3,66 +3,95 @@ name: C++26 Modules Xmake CI
 on:
   push:
     branches: [main, master]
+    paths:
+      - src/**
+      - tests/**
+      - xmake.lua
+      - .github/workflows/ci.yml
   pull_request:
+    paths:
+      - src/**
+      - tests/**
+      - xmake.lua
+      - .github/workflows/ci.yml
+  workflow_dispatch:
+    inputs:
+      full_matrix:
+        description: Also run macOS and Windows (uses additional hosted compute)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-test:
-    name: ${{ matrix.name }}
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 8
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        include:
-          - name: Ubuntu 26.04 / GCC 16
-            os: ubuntu-26.04
-            configure_debug: xmake f -m debug -c --toolchain=gcc-16
-            configure_release: xmake f -m release -c --toolchain=gcc-16
-          - name: macOS 26 / LLVM Clang 22
-            os: macos-26
-            configure_debug: xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
-            configure_release: xmake f -m release -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
-          - name: Windows Server 2025 / Visual Studio 2026
-            os: windows-2025-vs2026
-            configure_debug: xmake f -m debug -c
-            configure_release: xmake f -m release -c
+        os: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.full_matrix && '["ubuntu-26.04", "macos-26", "windows-2025-vs2026"]' || '["ubuntu-26.04"]') }}
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
+        timeout-minutes: 1
 
       - name: Install GCC 16
         if: runner.os == 'Linux'
+        timeout-minutes: 3
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-16 g++-16
 
+      - name: Install LLVM 22
+        if: runner.os == 'macOS'
+        timeout-minutes: 3
+        run: brew install llvm@22
+
       - name: Set up Xmake
         uses: xmake-io/github-action-setup-xmake@v1
+        timeout-minutes: 3
         with:
           xmake-version: 3.1.2
 
-      - name: Install LLVM 22
+      - name: Configure Debug (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 1
+        run: xmake f -m debug -c --toolchain=gcc-16
+
+      - name: Configure Debug (macOS)
         if: runner.os == 'macOS'
-        run: brew install llvm@22
+        timeout-minutes: 1
+        run: xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
 
-      - name: Print environment info
-        run: xmake --version
-
-      - name: Configure Debug
-        run: ${{ matrix.configure_debug }}
+      - name: Configure Debug (Windows)
+        if: runner.os == 'Windows'
+        timeout-minutes: 1
+        run: xmake f -m debug -c
 
       - name: Build Debug
+        timeout-minutes: 2
         run: xmake -vD
 
       - name: Test Debug
+        timeout-minutes: 1
         run: xmake test -v
 
       - name: Configure Release
-        run: ${{ matrix.configure_release }}
+        timeout-minutes: 1
+        run: xmake f -m release
 
       - name: Build Release
+        timeout-minutes: 2
         run: xmake -vD
 
       - name: Test Release
+        timeout-minutes: 1
         run: xmake test -v
