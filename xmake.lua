@@ -1,6 +1,6 @@
-set_project("Cpp23ProjectDemo")
-set_version("0.1.0")
-set_xmakever("2.8.5")
+set_project("Cpp26ProjectSkeleton")
+set_version("0.2.0")
+set_xmakever("3.1.2")
 set_allowedplats("windows", "macosx", "linux")
 
 add_rules("mode.debug", "mode.release")
@@ -15,8 +15,16 @@ end
 
 local function configure_common_target()
     set_kind("binary")
-    set_languages("cxx23")
-    add_files("src/main.cpp")
+    set_languages("cxx26")
+    set_policy("build.c++.modules", true)
+    set_policy("build.c++.modules.std", true)
+
+    add_files(
+        "src/main.cpp",
+        "src/cpp26_skeleton.cpp",
+        "src/cpp26_skeleton.cppm"
+    )
+
     set_warnings("allextra", "pedantic", "error")
 
     if is_mode("debug") then
@@ -77,7 +85,7 @@ local function configure_common_target()
     end
 end
 
-target("my_app")
+target("cpp26_skeleton")
     configure_common_target()
     add_tests("smoke")
 
@@ -90,7 +98,7 @@ target("my_app")
     end
 
 if is_mode("debug") and is_plat("linux", "macosx") then
-    target("my_app_tsan")
+    target("cpp26_skeleton_tsan")
         configure_common_target()
         set_default(false)
         add_cxxflags("-fsanitize=thread", "-fno-omit-frame-pointer")
