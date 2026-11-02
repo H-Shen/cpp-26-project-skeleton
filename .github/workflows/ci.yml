@@ -1,4 +1,4 @@
-name: C++ Xmake CI (Cross-Platform)
+name: C++26 Modules Xmake CI
 
 on:
   push:
@@ -7,27 +7,50 @@ on:
 
 jobs:
   build-and-test:
-    name: Build & Test on ${{ matrix.os }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - name: Ubuntu 26.04 / GCC 16
+            os: ubuntu-26.04
+            configure_debug: xmake f -m debug -c --toolchain=gcc-16
+            configure_release: xmake f -m release -c --toolchain=gcc-16
+          - name: macOS 26 / LLVM Clang 22
+            os: macos-26
+            configure_debug: xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
+            configure_release: xmake f -m release -c --toolchain=llvm --sdk="$(brew --prefix llvm@22)"
+          - name: Windows Server 2025 / Visual Studio 2026
+            os: windows-2025-vs2026
+            configure_debug: xmake f -m debug -c
+            configure_release: xmake f -m release -c
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install GCC 16
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-16 g++-16
+
       - name: Set up Xmake
         uses: xmake-io/github-action-setup-xmake@v1
         with:
-          xmake-version: latest
+          xmake-version: 3.1.2
+
+      - name: Install LLVM 22
+        if: runner.os == 'macOS'
+        run: brew install llvm@22
 
       - name: Print environment info
         run: xmake --version
 
       - name: Configure Debug
-        run: xmake f -m debug -c
+        run: ${{ matrix.configure_debug }}
 
       - name: Build Debug
         run: xmake -vD
@@ -36,7 +59,7 @@ jobs:
         run: xmake test -v
 
       - name: Configure Release
-        run: xmake f -m release -c
+        run: ${{ matrix.configure_release }}
 
       - name: Build Release
         run: xmake -vD

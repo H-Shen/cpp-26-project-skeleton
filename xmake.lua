@@ -1,22 +1,25 @@
-set_project("Cpp23ProjectDemo")
-set_version("0.1.0")
-set_xmakever("2.8.5")
+set_project("Cpp26ProjectSkeleton")
+set_version("0.2.0")
+set_xmakever("3.1.2")
 set_allowedplats("windows", "macosx", "linux")
 
 add_rules("mode.debug", "mode.release")
+set_policy("build.c++.modules.std", false)
 
 if is_plat("windows") then
     set_toolchains("msvc")
-elseif is_plat("macosx") then
-    set_toolchains("clang")
-elseif is_plat("linux") then
-    set_toolchains("gcc")
 end
 
 local function configure_common_target()
     set_kind("binary")
-    set_languages("cxx23")
-    add_files("src/main.cpp")
+    set_languages("cxx26")
+
+    add_files(
+        "src/main.cpp",
+        "src/cpp26_skeleton.cpp",
+        "src/cpp26_skeleton.cppm"
+    )
+
     set_warnings("allextra", "pedantic", "error")
 
     if is_mode("debug") then
@@ -77,9 +80,9 @@ local function configure_common_target()
     end
 end
 
-target("my_app")
+target("cpp26_skeleton")
     configure_common_target()
-    add_tests("smoke")
+    add_tests("smoke", {run_timeout = 30000})
 
     if is_mode("debug") and is_plat("linux") then
         add_cxxflags("-fsanitize=address,undefined,leak", "-fno-omit-frame-pointer")
@@ -90,10 +93,10 @@ target("my_app")
     end
 
 if is_mode("debug") and is_plat("linux", "macosx") then
-    target("my_app_tsan")
+    target("cpp26_skeleton_tsan")
         configure_common_target()
         set_default(false)
         add_cxxflags("-fsanitize=thread", "-fno-omit-frame-pointer")
         add_ldflags("-fsanitize=thread")
-        add_tests("tsan")
+        add_tests("tsan", {run_timeout = 30000})
 end
