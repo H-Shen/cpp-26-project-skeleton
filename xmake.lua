@@ -4,13 +4,10 @@ set_xmakever("3.1.2")
 set_allowedplats("windows", "macosx", "linux")
 
 add_rules("mode.debug", "mode.release")
+set_policy("build.c++.modules.std", false)
 
 if is_plat("windows") then
     set_toolchains("msvc")
-elseif is_plat("macosx") then
-    set_toolchains("clang")
-elseif is_plat("linux") then
-    set_toolchains("gcc")
 end
 
 local function configure_common_target()

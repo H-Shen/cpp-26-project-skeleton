@@ -15,12 +15,12 @@ jobs:
         include:
           - name: Ubuntu 26.04 / GCC 16
             os: ubuntu-26.04
-            configure_debug: xmake f -m debug -c --cc=gcc-16 --cxx=g++-16
-            configure_release: xmake f -m release -c --cc=gcc-16 --cxx=g++-16
-          - name: macOS 26 / Apple Clang
+            configure_debug: xmake f -m debug -c --toolchain=gcc-16
+            configure_release: xmake f -m release -c --toolchain=gcc-16
+          - name: macOS 26 / LLVM Clang 21
             os: macos-26
-            configure_debug: xmake f -m debug -c
-            configure_release: xmake f -m release -c
+            configure_debug: xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@21)"
+            configure_release: xmake f -m release -c --toolchain=llvm --sdk="$(brew --prefix llvm@21)"
           - name: Windows Server 2025 / Visual Studio 2026
             os: windows-2025-vs2026
             configure_debug: xmake f -m debug -c
@@ -40,6 +40,10 @@ jobs:
         uses: xmake-io/github-action-setup-xmake@v1
         with:
           xmake-version: 3.1.2
+
+      - name: Install LLVM 21
+        if: runner.os == 'macOS'
+        run: brew install llvm@21
 
       - name: Print environment info
         run: xmake --version

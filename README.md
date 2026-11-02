@@ -10,14 +10,14 @@ The template deliberately treats Modules as the default project structure:
 
 There is no project header for the C++ interface. The module boundary is the interface boundary.
 
-The standard library is consumed through ordinary headers rather than `import std;`. This keeps the template focused on portable project named modules without depending on compiler-specific standard-library-module support.
+The standard library is consumed through ordinary headers rather than `import std;`. Xmake's automatic standard-library module build is disabled with `build.c++.modules.std = false`.
 
 ## Supported toolchains
 
 The reference configurations are intentionally narrow and are the same configurations exercised by CI:
 
 - Linux: GCC 16 on Ubuntu 26.04
-- macOS: Apple Clang on macOS 26
+- macOS: LLVM Clang 21 on macOS 26
 - Windows: MSVC from Visual Studio 2026 on Windows Server 2025
 
 Other platform/toolchain combinations may work but are not part of the supported matrix.
@@ -31,10 +31,12 @@ Xmake handles module dependency scanning, BMI/CMI build order, and compiler-spec
 
 ## Build
 
+On Linux and macOS, select the toolchain using the platform-specific commands below first. Subsequent mode changes keep that selection.
+
 ### Debug
 
 ```bash
-xmake f -m debug -c
+xmake f -m debug
 xmake
 xmake test
 ```
@@ -50,7 +52,7 @@ Debug builds also enable runtime/STL hardening where available:
 ### Release
 
 ```bash
-xmake f -m release -c
+xmake f -m release
 xmake
 xmake test
 ```
@@ -62,12 +64,25 @@ Release builds use C++26 mode with O2-equivalent optimization and no sanitizers.
 The reference Linux configuration uses GCC 16 explicitly:
 
 ```bash
-xmake f -m debug -c --cc=gcc-16 --cxx=g++-16
+xmake f -m debug -c --toolchain=gcc-16
 xmake
 xmake test
 ```
 
-Use `-m release` for the Release configuration.
+Use `-m release` for the Release configuration. Selecting the toolchain also selects GCC 16 for linking.
+
+## macOS LLVM 21
+
+Use upstream LLVM for named modules. The tested Apple Clang 21 accepts C++26 mode but rejects the module declarations.
+
+```bash
+brew install llvm@21
+xmake f -m debug -c --toolchain=llvm --sdk="$(brew --prefix llvm@21)"
+xmake
+xmake test
+```
+
+Use `-m release` for the Release configuration. The LLVM toolchain keeps the compiler and dependency scanner from the same installation.
 
 ## Targets
 
@@ -125,7 +140,7 @@ import cpp26_skeleton;
 GitHub Actions builds and tests Debug and Release configurations on the pinned reference environments:
 
 - Ubuntu 26.04 with GCC 16
-- macOS 26 with Apple Clang
+- macOS 26 with LLVM Clang 21
 - Windows Server 2025 with Visual Studio 2026
 
 CI installs Xmake 3.1.2 explicitly. Warnings are treated as errors for project targets.
