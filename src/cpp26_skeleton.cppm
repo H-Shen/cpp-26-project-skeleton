@@ -1,6 +1,9 @@
-export module cpp26_skeleton;
+module;
 
-import std;
+#include <string>
+#include <string_view>
+
+export module cpp26_skeleton;
 
 export namespace cpp26_skeleton {
 

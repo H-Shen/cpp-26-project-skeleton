@@ -3,7 +3,11 @@
 #  include <crtdbg.h>
 #endif
 
-import std;
+#include <mutex>
+#include <print>
+#include <thread>
+#include <vector>
+
 import cpp26_skeleton;
 
 int main() {

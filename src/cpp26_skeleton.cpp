@@ -1,6 +1,10 @@
-module cpp26_skeleton;
+module;
 
-import std;
+#include <format>
+#include <string>
+#include <string_view>
+
+module cpp26_skeleton;
 
 namespace cpp26_skeleton {
 

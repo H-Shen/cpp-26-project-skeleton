@@ -1,14 +1,16 @@
 # Cpp_26_Project_Skeleton
 
-Minimal cross-platform C++26 project template using Xmake and standard C++ named modules.
+Minimal cross-platform C++26 project template using Xmake and C++ named modules.
 
 The template deliberately treats Modules as the default project structure:
 
 - `src/cpp26_skeleton.cppm` — primary module interface
 - `src/cpp26_skeleton.cpp` — module implementation unit
-- `src/main.cpp` — importer using `import std;` and `import cpp26_skeleton;`
+- `src/main.cpp` — importer using `import cpp26_skeleton;`
 
 There is no project header for the C++ interface. The module boundary is the interface boundary.
+
+The standard library is consumed through ordinary headers rather than `import std;`. This keeps the template focused on portable project named modules without depending on compiler-specific standard-library-module support.
 
 ## Supported toolchains
 
@@ -24,11 +26,8 @@ Other platform/toolchain combinations may work but are not part of the supported
 
 - Xmake 3.1.2 or newer
 - A compiler/toolchain capable of C++26 mode and standard C++ named modules
-- Standard-library module support for `import std;`
 
-The project explicitly enables Xmake's C++ module and standard-library-module policies. Xmake handles module dependency scanning, BMI/CMI build order, and compiler-specific module artifacts.
-
-`import std;` remains dependent on the compiler and standard-library implementation. CI is therefore intentionally used as a compatibility gate rather than assuming identical behavior across libstdc++, libc++, and the MSVC STL.
+Xmake handles module dependency scanning, BMI/CMI build order, and compiler-specific module artifacts for the project module.
 
 ## Build
 
@@ -77,12 +76,15 @@ Use `-m release` for the Release configuration.
 
 ## Module layout
 
-The module interface exports the public API:
+The module interface exports the public API while using standard-library headers in the global module fragment:
 
 ```cpp
-export module cpp26_skeleton;
+module;
 
-import std;
+#include <string>
+#include <string_view>
+
+export module cpp26_skeleton;
 
 export namespace cpp26_skeleton {
 
@@ -95,9 +97,13 @@ export namespace cpp26_skeleton {
 The implementation remains separate:
 
 ```cpp
-module cpp26_skeleton;
+module;
 
-import std;
+#include <format>
+#include <string>
+#include <string_view>
+
+module cpp26_skeleton;
 
 namespace cpp26_skeleton {
 
@@ -106,10 +112,11 @@ namespace cpp26_skeleton {
 }
 ```
 
-Consumers import the module instead of including a project header:
+Consumers include whichever standard-library headers they need and import the project module:
 
 ```cpp
-import std;
+#include <print>
+
 import cpp26_skeleton;
 ```
 
